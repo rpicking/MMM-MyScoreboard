@@ -524,9 +524,23 @@ Module.register("MMM-MyScoreboard",{
           wrapper.appendChild(leagueSeparator);
         }
         self.sportsData[index].forEach(function(game, gidx) {
+          // sport wrapper
+          var sportWrapper = document.createElement("div");
+          sportWrapper.classList.add("sport-wrapper");
+
+          const interval = setInterval(() => {            
+            if (isAtBottom(sportWrapper)) {
+              sportWrapper.scrollTop = 0;
+            } else {
+              sportWrapper.scrollTop += viewbox;
+            }
+          }, 30000);
+        
           var boxScore = self.boxScoreFactory(sport.league, game);
           boxScore.classList.add(gidx % 2 == 0 ? "odd" : "even") ;
-          wrapper.appendChild(boxScore);
+
+          sportWrapper.appendChild(boxScore);
+          wrapper.appendChild(sportWrapper);
         });
       }
     });
@@ -545,6 +559,10 @@ Module.register("MMM-MyScoreboard",{
     }
 
     return wrapper;
+  },
+
+  isAtBottom(element) {
+    return element.scrollHeight - element.scrollTop === element.clientHeight;
   },
 
   socketNotificationReceived: function(notification, payload) {

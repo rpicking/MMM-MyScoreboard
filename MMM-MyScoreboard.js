@@ -372,7 +372,7 @@ Module.register("MMM-MyScoreboard",{
       if (this.supportedLeagues[league].logoFormat == "url") {
         vTeamLogoImg.src = gameObj.vTeamLogoUrl;
       } else {
-        vTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.vTeam + "." + this.supportedLeagues[league].logoFormat );        
+        vTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.vTeam + "." + this.supportedLeagues[league].logoFormat );
       }
 
       vTeamLogoImg.setAttribute("data-abbr", gameObj.vTeam);
@@ -510,6 +510,9 @@ Module.register("MMM-MyScoreboard",{
     */
     var anyGames = false;
     var self = this;
+
+    const isAtBottom = this.isAtBottom.bind(this);
+
     this.config.sports.forEach(function(sport, index) {
       if (self.sportsData[index] != null && self.sportsData[index].length > 0) {
         anyGames = true;
@@ -528,14 +531,14 @@ Module.register("MMM-MyScoreboard",{
           var sportWrapper = document.createElement("div");
           sportWrapper.classList.add("sport-wrapper");
 
-          const interval = setInterval(() => {            
+          const interval = setInterval(() => {
             if (isAtBottom(sportWrapper)) {
               sportWrapper.scrollTop = 0;
             } else {
               sportWrapper.scrollTop += viewbox;
             }
           }, 30000);
-        
+
           var boxScore = self.boxScoreFactory(sport.league, game);
           boxScore.classList.add(gidx % 2 == 0 ? "odd" : "even") ;
 

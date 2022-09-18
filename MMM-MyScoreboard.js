@@ -526,16 +526,15 @@ Module.register("MMM-MyScoreboard",{
           }
           wrapper.appendChild(leagueSeparator);
         }
+        // sport wrapper
+        var sportWrapper = document.createElement("div");
+        sportWrapper.classList.add("sport-wrapper");
         self.sportsData[index].forEach(function(game, gidx) {
-          // sport wrapper
-          var sportWrapper = document.createElement("div");
-          sportWrapper.classList.add("sport-wrapper");
-
-          const interval = setInterval(() => {
+          var interval = setInterval(() => {
             if (isAtBottom(sportWrapper)) {
               sportWrapper.scrollTop = 0;
             } else {
-              sportWrapper.scrollTop += viewbox;
+              sportWrapper.scrollTop += sportWrapper.clientHeight;
             }
           }, 30000);
 
@@ -543,8 +542,8 @@ Module.register("MMM-MyScoreboard",{
           boxScore.classList.add(gidx % 2 == 0 ? "odd" : "even") ;
 
           sportWrapper.appendChild(boxScore);
-          wrapper.appendChild(sportWrapper);
         });
+        wrapper.appendChild(sportWrapper);
       }
     });
 

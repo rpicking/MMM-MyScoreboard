@@ -20,6 +20,7 @@ Module.register("MMM-MyScoreboard",{
     highlightWinners: true,
     viewStyle: "largeLogos",
     showRankings: true,
+    autoScrollTimeout: 15,  // time in seconds between auto scrolling
     maxSectionHeight: undefined,
     sports: [
       {
@@ -552,7 +553,7 @@ Module.register("MMM-MyScoreboard",{
           } else {
             sportWrapper.scrollTop += sportWrapper.clientHeight;
           }
-        }, 30000);
+        }, this.config.autoScrollTimeout * 1000);
 
         this.autoScrollIntervals.push(autoScroll);
       }

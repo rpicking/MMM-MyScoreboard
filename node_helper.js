@@ -29,15 +29,8 @@ module.exports = NodeHelper.create({
       var provider = this.providers[payload.provider];
 
       provider.getScores(payload.league, payload.teams, payload.gameDate, function(scores) {
-        self.sendSocketNotification("MMM-MYSCOREBOARD-SCORE-UPDATE", {instanceId: payload.instanceId, index: payload.index, scores: scores});
+        self.sendSocketNotification("MMM-MYSCOREBOARD-SCORE-UPDATE", {instanceId: payload.instanceId, index: payload.index, gameDate: payload.gameDate, scores: scores});
       });
-
-
     }
-
   },
-
-
-
-
 });

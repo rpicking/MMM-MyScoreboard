@@ -311,6 +311,7 @@ module.exports = {
       var formattedGame = {
         classes: classes,
         gameMode: gameState,
+        gameDate: moment(game.date).tz(localTZ),
         hTeam: game.home_team.short_name.toUpperCase(),
         vTeam: game.visiting_team.short_name.toUpperCase(),
         hTeamLong: game.home_team.short_name == "TBD" ? "TBD" : self.titleCase(game.home_team.name),

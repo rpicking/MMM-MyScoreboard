@@ -441,6 +441,16 @@ Module.register("MMM-MyScoreboard",{
     });
     boxScore.appendChild(status);
 
+    var gameDate = moment(gameObj.gameDate);
+
+    var now = moment();
+    if (!now.isSame(gameDate, 'date')) {
+      var gameDateSpan = document.createElement("span");
+      gameDateSpan.classList.add("game-date");
+      gameDateSpan.innerText = now.diff(gameDate, 'days') < 1 ? "Yesterday" : gameDate.format("M/D/YY");
+      status.appendChild(gameDateSpan);
+    }
+
     //add scores if game in progress or finished
     if (gameObj.gameMode != this.gameModes.FUTURE) {
 
@@ -517,8 +527,8 @@ Module.register("MMM-MyScoreboard",{
 
     this.config.sports.forEach((sport, index) => {
       // if no sportsData ignore this sport
-      var scores = self.sportsData[index];
-      if (scores === undefined || scores.length === 0) {
+      var scores = self.getSportScores(index);
+      if (scores.length === 0) {
         return;
       }
 
@@ -592,6 +602,20 @@ Module.register("MMM-MyScoreboard",{
 
     this.autoScrollIntervals = [];
   },
+  
+  getSportScores(index) {
+
+    // if no data return nothing
+    if (this.sportsData[index] == null) {
+      return [];
+    }
+
+    var scores = [];
+    for (var gameDate in this.sportsData[index]) {
+      scores.push.apply(scores, this.sportsData[index][gameDate]);
+    }
+    return scores;
+  },
 
   isAtBottom(element) {
     return element.scrollHeight - element.scrollTop === element.clientHeight;
@@ -599,9 +623,19 @@ Module.register("MMM-MyScoreboard",{
 
   socketNotificationReceived: function(notification, payload) {
     if ( notification === "MMM-MYSCOREBOARD-SCORE-UPDATE" && payload.instanceId == this.identifier) {
-      console.log("[MMM-MyScoreboard] Updating Scores");
       this.loaded = true;
-      this.sportsData[payload.index] = payload.scores;
+
+      if (!this.sportsData.hasOwnProperty(payload.index)) {
+        this.sportsData[payload.index] = {};
+      }
+
+      var dateStr = moment(payload.gameDate).format("YYYY-MM-DD");
+      if (!this.trackedDates.includes(dateStr)) {
+        this.trackedDates.push(dateStr);
+      }
+
+      this.sportsData[payload.index][dateStr] = payload.scores;
+
       this.updateDom();
     }
   },
@@ -627,8 +661,9 @@ Module.register("MMM-MyScoreboard",{
     */
 
     this.loaded = false;
-    this.sportsData = new Array();
+    this.sportsData = {};
     this.autoScrollIntervals = [];
+    this.trackedDates = [];
 
     if (this.viewStyles.indexOf(this.config.viewStyle) == -1) {
       this.config.viewStyle = "largeLogos";
@@ -684,43 +719,102 @@ Module.register("MMM-MyScoreboard",{
 
   },
 
+  /**
+   * Gets a 
+   * @param {*} startDate Start date of range to check
+   * @param {*} endDate End date of range to check
+   * @returns List of all dates including the days of start/end dates
+   */
+  getDates: function(startDate, endDate) {
+    var dates = [];
+
+    var now = moment();
+    var current = moment(startDate);
+    while(current.isBefore(endDate, 'day')) {
+      // don't fetch game data for previous days if they are tracked
+      if (this.shouldFetchScores(current)) {
+        dates.push(moment(current));
+      }
+
+      current.add(1, 'day');
+    }
+
+    dates.push(endDate);
+
+    // if last is same date as endDate don't add enddate
+    return dates;
+  },
+
+  shouldFetchScores(gameDate) {
+    return !this.trackedDates.some((dateStr) => {
+      var date = moment(dateStr, "YYYY-MM-DD");
+      return gameDate.isSame(date, 'day');
+    });
+  },
+
   getScores: function() {
 
     var gameDate = moment(); //get today's date
+    var rolloverDate = moment(gameDate).subtract(this.config.rolloverHours, 'hours');
 
-    if (gameDate.hour() < this.config.rolloverHours) {
-      /*
-        it's past midnight local time, but within the
-        rollover window.  Query for yesterday's games,
-        not today's
-      */
-      gameDate.subtract(1, "day");
-    }
+    this.clearOldData(rolloverDate);
+
+    // get list of game dates that we don't already track
+    // doesn't attempt to fetch scores for previous days if we already track them
+    var gameDates = this.getDates(rolloverDate, gameDate);
+
 
     //just used for debug, if you want to force a specific date
     if (this.config.DEBUG_gameDate) {
-      gameDate = moment(this.config.DEBUG_gameDate, "YYYYMMDD");
+      gameDate = moment(this.config.DEBUG_gameDate, "YYYY-MM-DD");
     }
 
     var self = this;
-    this.config.sports.forEach( function(sport, index) {
 
-      var payload = {
-        instanceId: self.identifier,
-        index: index,
-        league: sport.league,
-        teams: self.makeTeamList(self, sport.league, sport.teams, sport.groups),
-        provider: self.supportedLeagues[sport.league].provider,
-        gameDate: gameDate
-      };
+    console.log("[MMM-MyScoreboard] Updating Scores");
 
-      self.sendSocketNotification("MMM-MYSCOREBOARD-GET-SCORES", payload);
+    gameDates.forEach((date) => {
+      this.config.sports.forEach((sport, index) => {
+        var payload = {
+          instanceId: self.identifier,
+          index: index,
+          league: sport.league,
+          teams: self.makeTeamList(self, sport.league, sport.teams, sport.groups),
+          provider: self.supportedLeagues[sport.league].provider,
+          gameDate: date
+        };
 
+        self.sendSocketNotification("MMM-MYSCOREBOARD-GET-SCORES", payload);
+      });
+    });    
+  },
 
+  /**
+   * Clears out old tracked score data if they are before the earliest desired date
+   * @param {*} earliestDate Earliest desired gameDate for showing previously tracked scores
+   */
+  clearOldData(earliestDate) {
+
+    // clear old score
+    for (var [, sportData] of Object.entries(this.sportsData)) {
+      for (var dateStr in sportData) {
+        // if the date for these scores is earlier than the earliest desired day remove them
+        var date = moment(dateStr);
+        if (date.isBefore(earliestDate, 'day')) {
+          delete sportData[dateStr];
+          continue;
+        }
+
+        // check scores for any older
+        sportData[dateStr] = sportData[dateStr]
+            .filter(score => moment(score.gameDate).isSameOrAfter(earliestDate, 'day'));
+      }
+    }
+
+    // clear old tracked dates
+    this.trackedDates = this.trackedDates.filter((date) => {
+      return !moment(date).isBefore(earliestDate, 'day');
     });
-
-
-
   },
 
   /*

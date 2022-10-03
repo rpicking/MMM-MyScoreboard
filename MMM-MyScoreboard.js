@@ -20,6 +20,7 @@ Module.register("MMM-MyScoreboard",{
     highlightWinners: true,
     viewStyle: "largeLogos",
     showRankings: true,
+    maxSectionHeight: undefined,
     sports: [
       {
         league: "NHL",
@@ -472,6 +473,7 @@ Module.register("MMM-MyScoreboard",{
 
   // Override dom generator.
   getDom: function() {
+    this.clearAutoScrollIntervals();
 
     var wrapper = document.createElement("div");
     wrapper.classList.add("wrapper");
@@ -513,38 +515,58 @@ Module.register("MMM-MyScoreboard",{
 
     const isAtBottom = this.isAtBottom.bind(this);
 
-    this.config.sports.forEach(function(sport, index) {
-      if (self.sportsData[index] != null && self.sportsData[index].length > 0) {
-        anyGames = true;
-        if (self.config.showLeagueSeparators) {
-          var leagueSeparator = document.createElement("div");
-          leagueSeparator.classList.add("league-separator");
-          if (sport.label) {
-            leagueSeparator.innerHTML = "<span>" + sport.label + "</span>";
-          } else {
-            leagueSeparator.innerHTML = "<span>" + sport.league + "</span>";
-          }
-          wrapper.appendChild(leagueSeparator);
-        }
-        // sport wrapper
-        var sportWrapper = document.createElement("div");
-        sportWrapper.classList.add("sport-wrapper");
-        self.sportsData[index].forEach(function(game, gidx) {
-          var interval = setInterval(() => {
-            if (isAtBottom(sportWrapper)) {
-              sportWrapper.scrollTop = 0;
-            } else {
-              sportWrapper.scrollTop += sportWrapper.clientHeight;
-            }
-          }, 30000);
-
-          var boxScore = self.boxScoreFactory(sport.league, game);
-          boxScore.classList.add(gidx % 2 == 0 ? "odd" : "even") ;
-
-          sportWrapper.appendChild(boxScore);
-        });
-        wrapper.appendChild(sportWrapper);
+    this.config.sports.forEach((sport, index) => {
+      // if no sportsData ignore this sport
+      var scores = self.sportsData[index];
+      if (scores === undefined || scores.length === 0) {
+        return;
       }
+
+      anyGames = true;
+
+      if (self.config.showLeagueSeparators) {
+        var leagueSeparator = document.createElement("div");
+        leagueSeparator.classList.add("league-separator");
+
+        if (sport.label) {
+          leagueSeparator.innerHTML = "<span>" + sport.label + "</span>";
+        } else {
+          leagueSeparator.innerHTML = "<span>" + sport.league + "</span>";
+        }
+
+        wrapper.appendChild(leagueSeparator);
+      }
+
+      // sport wrapper
+      var sportWrapper = document.createElement("div");
+      sportWrapper.classList.add("sport-wrapper");
+
+      if (self.config.maxSectionHeight !== undefined) {
+      
+        sportWrapper.style.maxHeight = self.config.maxSectionHeight;
+
+        // setup automatic scrolling timer
+        var autoScroll = setInterval(() => {
+          if (isAtBottom(sportWrapper)) {
+            sportWrapper.scrollTop = 0;
+          } else {
+            sportWrapper.scrollTop += sportWrapper.clientHeight;
+          }
+        }, 30000);
+
+        this.autoScrollIntervals.push(autoScroll);
+      }
+
+      scores.forEach(function(game, gidx) {
+
+        var boxScore = self.boxScoreFactory(sport.league, game);
+
+        boxScore.classList.add(gidx % 2 == 0 ? "odd" : "even") ;
+
+        sportWrapper.appendChild(boxScore);
+      });
+
+      wrapper.appendChild(sportWrapper);
     });
 
     /*
@@ -561,6 +583,14 @@ Module.register("MMM-MyScoreboard",{
     }
 
     return wrapper;
+  },
+
+  clearAutoScrollIntervals() {
+    this.autoScrollIntervals.forEach((autoScroll) => {
+      clearInterval(autoScroll);
+    });
+
+    this.autoScrollIntervals = [];
   },
 
   isAtBottom(element) {
@@ -598,6 +628,7 @@ Module.register("MMM-MyScoreboard",{
 
     this.loaded = false;
     this.sportsData = new Array();
+    this.autoScrollIntervals = [];
 
     if (this.viewStyles.indexOf(this.config.viewStyle) == -1) {
       this.config.viewStyle = "largeLogos";

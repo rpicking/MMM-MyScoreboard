@@ -535,6 +535,8 @@ Module.register("MMM-MyScoreboard",{
 
       anyGames = true;
 
+      var scrollIndicator = undefined;
+
       if (self.config.showLeagueSeparators) {
         var leagueSeparator = document.createElement("div");
         leagueSeparator.classList.add("league-separator");
@@ -544,6 +546,10 @@ Module.register("MMM-MyScoreboard",{
         } else {
           leagueSeparator.innerHTML = "<span>" + sport.league + "</span>";
         }
+        
+        scrollIndicator = document.createElement("div");
+        scrollIndicator.classList.add("scroll-indicator");
+        leagueSeparator.appendChild(scrollIndicator);
 
         wrapper.appendChild(leagueSeparator);
       }
@@ -552,9 +558,25 @@ Module.register("MMM-MyScoreboard",{
       var sportWrapper = document.createElement("div");
       sportWrapper.classList.add("sport-wrapper");
 
-      if (self.config.maxSectionHeight !== undefined) {
-      
+      if (self.config.maxSectionHeight !== undefined) {      
         sportWrapper.style.maxHeight = self.config.maxSectionHeight;
+
+        // initialize scroll position indicators
+        if (scrollIndicator !== undefined) {
+          setTimeout(() => {
+            var divisions = Math.ceil(sportWrapper.scrollHeight / sportWrapper.clientHeight);
+            if (divisions > 1) {
+              for (var i = 0; i < divisions; ++i) {
+                var dot = document.createElement("span");
+                dot.classList.add("dot");
+                if (i === 0) {
+                  dot.classList.add("current");
+                }
+                scrollIndicator.appendChild(dot);
+              }
+            }
+          }, 1000);
+        }
 
         // setup automatic scrolling timer
         var autoScroll = setInterval(() => {
@@ -563,6 +585,19 @@ Module.register("MMM-MyScoreboard",{
           } else {
             sportWrapper.scrollTop += sportWrapper.clientHeight;
           }
+
+          if (scrollIndicator !== undefined) {
+            // update current scroll position indicator
+            var currentIndex = Math.ceil(sportWrapper.scrollTop / sportWrapper.clientHeight);
+            scrollIndicator.childNodes.forEach((dot, index) => {
+              dot.classList.remove("current");
+              if (index === currentIndex) {
+                dot.classList.add("current");
+              }
+            });
+          }
+
+
         }, this.config.autoScrollTimeout * 1000);
 
         this.autoScrollIntervals.push(autoScroll);

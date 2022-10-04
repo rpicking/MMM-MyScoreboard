@@ -174,6 +174,12 @@
   font-weight: 400;
 }
 
+.MMM-MyScoreboard .box-score .status > span.game-date {
+  font-size: 11px;
+  position: absolute;
+  bottom: 3px;
+}
+
 .MMM-MyScoreboard .box-score .logo .ranking {
   position: absolute;
   top: 0;

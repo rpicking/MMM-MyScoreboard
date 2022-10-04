@@ -653,6 +653,7 @@ module.exports = {
 
       formattedGamesList.push({
         classes: classes,
+        gameDate: moment(game.date).tz(localTZ),
         gameMode: gameState,
         hTeam: hTeamData.team.abbreviation == undefined ? hTeamData.team.name.substring(0,4).toUpperCase() + " " : hTeamData.team.abbreviation,
         vTeam: vTeamData.team.abbreviation == undefined ? vTeamData.team.name.substring(0,4).toUpperCase() + " " : vTeamData.team.abbreviation,

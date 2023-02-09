@@ -5,6 +5,7 @@
   -------------------------------------
 
   Provides scores for
+    NFL (Pro Football)
     NCAAF (College Football, FBS Division)
     NCAAM (College Basketball. Division I)
     NCAAM_MM (College Basketball, March Madness Torunament)
@@ -44,6 +45,7 @@ module.exports = {
   LEAGUE_PATHS: {
 
     //North American Leagues
+    "NFL": "football/nfl",
     "NCAAF": "football/college-football",
     "NBA": "basketball/nba",
     "NCAAM": "basketball/mens-college-basketball",

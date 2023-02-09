@@ -47,10 +47,12 @@ Module.register("MMM-MyScoreboard",{
     "NBA": {provider: "ESPN", logoFormat: "svg"},
     "NHL": {provider: "SNET", logoFormat: "svg"},
     "NFL": {provider: "ESPN", logoFormat: "svg"},
+    "NFL_POST_SEASON": {provider: "ESPN", logoFormat: "svg"},
     "CFL": {provider: "SNET", logoFormat: "svg"},
     "MLB": {provider: "SNET", logoFormat: "svg"},
     "MLS": {provider: "SNET", logoFormat: "svg", homeTeamFirst: true},
     "NCAAF": {provider: "ESPN", logoFormat: "png"},
+    "NCAAF_POST_SEASON": {provider: "ESPN", logoFormat: "png"},
     "NCAAM": {provider: "ESPN", logoFormat: "png"},
     "NCAAM_MM": {provider: "ESPN",logoFormat: "png"},
 
@@ -331,11 +333,17 @@ Module.register("MMM-MyScoreboard",{
       boxScore.classList.add("home-team-first");
     }
 
-    //redirect path to logos to NCAAM
-    //for March Madness
+    //redirect path to logos to main league
+    //for March Madness, NFL and NCAAF post seasons
     var leagueForLogoPath = league;
     if (league == "NCAAM_MM") {
       leagueForLogoPath = "NCAAM";
+    }
+    if (league === "NFL_POST_SEASON") {
+      leagueForLogoPath = "NFL";
+    }
+    if (league === "NCAAF_POST_SEASON") {
+      leagueForLogoPath = "NCAAF";
     }
 
     //add team logos if applicable
@@ -926,6 +934,8 @@ Module.register("MMM-MyScoreboard",{
       "NFC" : ["ARI", "ATL", "CAR", "CHI", "DAL", "DET", "GB", "LA", "MIN", "NO", "NYG", "PHI", "SEA", "SF", "TB", "WAS"]
     },
 
+    NFL_POST_SEASON : {}, // no groups for nfl post season
+
     MLS : {
 
       //conferences
@@ -959,6 +969,9 @@ Module.register("MMM-MyScoreboard",{
       "Top 25" : ["@T25"] //special indicator for Top 25 ranked teams
 
     },
+
+    NCAA_POST_SEASON : {},  // no groups for NCAA football post season
+
 
     NCAAM : {
 

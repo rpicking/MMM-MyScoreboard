@@ -6,7 +6,9 @@
 
   Provides scores for
     NFL (Pro Football)
+    NFL_POST_SEASON (Pro Football Playoffs, post season games, etc.)
     NCAAF (College Football, FBS Division)
+    NCAAF_POST_SEASON (College Football Bowl Games and Playoffs)
     NCAAM (College Basketball. Division I)
     NCAAM_MM (College Basketball, March Madness Torunament)
     NBA (National Basketball Association)
@@ -46,7 +48,9 @@ module.exports = {
 
     //North American Leagues
     "NFL": "football/nfl",
+    "NFL_POST_SEASON": "football/nfl",
     "NCAAF": "football/college-football",
+    "NCAAF_POST_SEASON": "football/college-football",
     "NBA": "basketball/nba",
     "NCAAM": "basketball/mens-college-basketball",
     "NCAAM_MM": "basketball/mens-college-basketball",
@@ -475,6 +479,13 @@ module.exports = {
       filteredGamesList = data.events;
     }
 
+    // filter out any potential non post season games if formatting post season scores
+    if (league.endsWith("_POST_SEASON")) {
+      filteredGamesList = filteredGamesList.filter((game) => {
+        return game.season.slug === "post-season";
+      });
+    }
+
     //sort by start time, then by away team shortcode.
     filteredGamesList.sort(function(a,b) {
       var aTime = moment(a.competitions[0].date);
@@ -661,8 +672,8 @@ module.exports = {
         vTeam: vTeamData.team.abbreviation == undefined ? vTeamData.team.name.substring(0,4).toUpperCase() + " " : vTeamData.team.abbreviation,
         hTeamLong: hTeamLong,
         vTeamLong: vTeamLong,
-        hTeamRanking: (league == "NCAAF" || league == "NCAAM") ? this.formatT25Ranking(hTeamData.curatedRank.current) : null,
-        vTeamRanking: (league == "NCAAF" || league == "NCAAM") ? this.formatT25Ranking(vTeamData.curatedRank.current) : null,
+        hTeamRanking: (league.startsWith("NCAAF") || league.startsWith("NCAAM")) ? this.formatT25Ranking(hTeamData.curatedRank.current) : null,
+        vTeamRanking: (league.startsWith("NCAAF") || league.startsWith("NCAAM")) ? this.formatT25Ranking(vTeamData.curatedRank.current) : null,
         hScore: parseInt(hTeamData.score),
         vScore: parseInt(vTeamData.score),
         status: status,

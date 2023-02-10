@@ -41,16 +41,32 @@ Module.register("MMM-MyScoreboard",{
   },
 
   supportedLeagues: {
+
+    /*
+
+      logoFormat is no longer used.  The module makes a catalog of what
+      logos are present locally and uses them when available.
+      Otherewise the log image URL provided by the data feed is used.
+
+      In the spirit of "if it ain't broke, don't  fix it," I'll leave
+      the logoFormat parameter in place.  Who knows... I might use it
+      for something else in the future.
+
+    */
+
     //North American Leagues
     "NBA": {provider: "ESPN", logoFormat: "svg"},
     "NHL": {provider: "SNET", logoFormat: "svg"},
     "NFL": {provider: "SNET", logoFormat: "svg"},
     "CFL": {provider: "SNET", logoFormat: "svg"},
     "MLB": {provider: "SNET", logoFormat: "svg"},
-    "MLS": {provider: "SNET", logoFormat: "svg", homeTeamFirst: true},
-    "NCAAF": {provider: "ESPN", logoFormat: "png"},
-    "NCAAM": {provider: "ESPN", logoFormat: "png"},
-    "NCAAM_MM": {provider: "ESPN",logoFormat: "png"},
+    "MLS": {provider: "SNET", logoFormat: "url", homeTeamFirst: true},
+    "NCAAF": {provider: "ESPN", logoFormat: "url"},
+    "NCAAM": {provider: "ESPN", logoFormat: "url"},
+    "NCAAM_MM": {provider: "ESPN",logoFormat: "url"},
+    "NCAAW": {provider: "ESPN", logoFormat: "url"},
+    "WNBA": {provider: "ESPN", logoFormat: "url"},
+
 
     //International Soccer
     "AFC_ASIAN_CUP": {provider: "ESPN", logoFormat: "url", homeTeamFirst: true},
@@ -242,6 +258,8 @@ Module.register("MMM-MyScoreboard",{
     "stackedWithLogos"
   ],
 
+  localLogos: {},
+
   viewStyleHasLogos: function(v) {
     switch(v) {
       case "largeLogos":
@@ -343,14 +361,15 @@ Module.register("MMM-MyScoreboard",{
       hTeamLogo.classList.add("logo", "home");
 
       var hTeamLogoImg = document.createElement("img");
-      if (this.supportedLeagues[league].logoFormat == "url") {
-        //use URL to external logo image
-        hTeamLogoImg.src = gameObj.hTeamLogoUrl;
+
+      if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + ".svg") !== -1) {
+        hTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.hTeam + ".svg");
+      } else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + ".png") !== -1) {
+        hTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.hTeam + ".png");
       } else {
-        hTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.hTeam + "." + this.supportedLeagues[league].logoFormat );
+        hTeamLogoImg.src = gameObj.hTeamLogoUrl;
       }
 
-      //End of for Soccer
       hTeamLogoImg.setAttribute("data-abbr", gameObj.hTeam);
 
       hTeamLogo.appendChild(hTeamLogoImg);
@@ -369,11 +388,15 @@ Module.register("MMM-MyScoreboard",{
       vTeamLogo.classList.add("logo", "visitor");
 
       var vTeamLogoImg = document.createElement("img");
-      if (this.supportedLeagues[league].logoFormat == "url") {
-        vTeamLogoImg.src = gameObj.vTeamLogoUrl;
+
+      if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + ".svg") !== -1) {
+        vTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.vTeam + ".svg");
+      } else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + ".png") !== -1) {
+        vTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.vTeam + ".png");
       } else {
-        vTeamLogoImg.src = this.file("logos/" + leagueForLogoPath + "/" + gameObj.vTeam + "." + this.supportedLeagues[league].logoFormat );        
+        vTeamLogoImg.src = gameObj.vTeamLogoUrl;
       }
+
 
       vTeamLogoImg.setAttribute("data-abbr", gameObj.vTeam);
 
@@ -553,6 +576,30 @@ Module.register("MMM-MyScoreboard",{
       this.loaded = true;
       this.sportsData[payload.index] = payload.scores;
       this.updateDom();
+    } else if (notification === "MMM-MYSCOREBOARD-LOCAL-LOGO-LIST" && payload.instanceId == this.identifier) {
+      this.localLogos = payload.logos;
+
+      /*
+        get scores and set up polling
+      */
+
+      this.getScores();
+
+      /*
+        As of v2.0, poll interval is no longer configurable.
+        Providers manage their own data pull schedule in some
+        cases (e.g. SNET.js), while others will poll on demand
+        when this timer fires. In an effort to keep the APIs
+        free and clear, please do not modify this to hammer
+        the APIs with a flood of calls.  Doing so may cause the
+        respective feed owners to lock down the APIs. Updating
+        every two minutes should be more than fine for our purposes.
+      */
+      setInterval(() => {
+        this.getScores();
+      }, 2 * 60 * 1000);
+
+
     }
   },
 
@@ -584,24 +631,13 @@ Module.register("MMM-MyScoreboard",{
     }
 
     /*
-      get scores and set up polling
+      Get list of local logo images files.
+      These will override the URL provided by the feed
+    
+      Once this returns the list, we'll start polling for data
     */
 
-    this.getScores();
-
-    /*
-      As of v2.0, poll interval is no longer configurable.
-      Providers manage their own data pull schedule in some
-      cases (e.g. SNET.js), while others will poll on demand
-      when this timer fires. In an effort to keep the APIs
-      free and clear, please do not modify this to hammer
-      the APIs with a flood of calls.  Doing so may cause the
-      respective feed owners to lock down the APIs. Updating
-      every two minutes should be more than fine for our purposes.
-    */
-    setInterval(function() {
-      self.getScores();
-    }, 2 * 60 * 1000);
+    self.sendSocketNotification("MMM-MYSCOREBOARD-GET-LOCAL-LOGOS", {instanceId: self.identifier});
 
   },
 
@@ -685,12 +721,12 @@ Module.register("MMM-MyScoreboard",{
       //divisions
       "Atlantic": ["BOS", "BUF", "DET", "FLA", "MTL", "OTT", "TB", "TOR"],
       "Metropolitain": ["CAR", "CLB", "NJ", "NYI", "NYR", "PIT", "PHI", "WSH"],
-      "Central": ["CHI", "COL", "DAL", "MIN", "NSH", "STL", "WPG"],
-      "Pacific": ["ANA", "ARI", "CGY", "EDM", "LA", "SJ", "VAN", "VGK"],
+      "Central": ["ARI", "CHI", "COL", "DAL", "MIN", "NSH", "STL", "WPG"],
+      "Pacific": ["ANA", "CGY", "EDM", "LA", "SEA", "SJ", "VAN", "VGK"],
 
       //conferences
       "East": ["BOS", "BUF", "CAR", "CLB", "DET", "FLA", "MTL", "NJ", "NYI", "NYR", "PIT", "PHI", "OTT", "TB", "TOR", "WSH"],
-      "West": ["ANA", "ARI", "CGY", "CHI", "COL", "DAL", "EDM", "LA", "MIN", "NSH", "SJ", "STL", "VAN", "VGK", "WPG"],
+      "West": ["ANA", "ARI", "CGY", "CHI", "COL", "DAL", "EDM", "LA", "MIN", "NSH", "SEA", "SJ", "STL", "VAN", "VGK", "WPG"],
 
       //all Canadian teams
       "Canadian": ["CGY", "EDM", "MTL", "OTT", "TOR", "VAN", "WPG"]
@@ -727,6 +763,15 @@ Module.register("MMM-MyScoreboard",{
       "West": ["DAL", "DEN", "GS", "HOU", "LAC", "LAL", "MEM", "MIN", "NO", "OKC", "PHX", "POR", "SA", "SAC", "UTAH"]
 
     },
+
+    WNBA : {
+
+      //conferences
+      "East": ["ATL","CHI","CONN","IND","NY","WSH"],
+      "West": ["DAL","LA","LV","MIN","PHX","SEA"]
+
+    },
+
 
     NFL : {
 
@@ -817,6 +862,47 @@ Module.register("MMM-MyScoreboard",{
       "Top 25" : ["@T25"] //special indicator for Top 25 ranked teams
 
     },
+
+    NCAAW : {
+
+      //divisions
+      "ASUN" : ["APSU", "BELL", "CARK", "EKU", "FGCU", "JAX", "JVST", "KENN", "LIB", "LIP", "UNA", "UNF", "QUOC", "STET"],
+      "America East" : ["ALB", "BING", "BRY", "MAINE", "NJIT", "UNH", "UMBC", "UML", "UVM"],
+      "American" : ["CIN", "ECU", "HOU", "MEM", "SMU", "USF", "TEM", "TULN", "TLSA", "UCF", "WICH"],
+      "Atlantic 10" : ["DAV", "DAY", "DUQ", "FOR", "GMU", "GW", "LAS", "LUC", "URI", "RICH", "JOES", "SLU", "SBU", "MASS", "VCU"],
+      "ACC" : ["BC", "CLEM", "DUKE", "FSU", "GT", "LOU", "MIA", "NCST", "UNC", "ND", "PITT", "SYR", "UVA", "VT", "WAKE"],
+      "Big 12" : ["BAY", "ISU", "KU", "KSU", "OU", "OKST", "TCU", "TEX", "TTU", "WVU"],
+      "Big East" : ["BUT", "CREI", "DEP", "GTWN", "MARQ", "PROV", "HALL", "SJU", "CONN", "VILL", "XAV"],
+      "Big Sky" : ["EWU", "IDST", "IDHO", "MONT", "MTST", "NAU", "UNCO", "PRST", "SAC", "WEB"],
+      "Big South" : ["CAM", "CHSO", "GWEB", "HPU", "LONG", "PRES", "RAD", "SCUP", "UNCA", "WIN"],
+      "Big Ten" : ["ILL", "IU", "IOWA", "MD", "MSU", "MICH", "MINN", "NEB", "NU", "OSU", "PSU", "PUR", "RUTG", "WISC"],
+      "Big West" : ["CSUN", "CP", "CSUB", "CSUF", "HAW", "LBSU", "UCD", "UCI", "UCR", "UCSD", "UCSB"],
+      "Colonial" : ["COFC", "DEL", "DREX", "ELON", "HAMP", "HOF", "MONM", "NCAT", "NE", "STBK", "TOW", "UNCW", "W&M"],
+      "Conference USA" : ["CLT", "FAU", "FIU", "LT", "MTSU", "UNT", "RICE", "UAB", "UTEP", "UTSA", "WKU"],
+      "Independents" : ["CHST", "HART"],
+      "Horizon" : ["CLEV", "DETM", "GB", "IUPU", "MILW", "NKU", "OAK", "PFW", "RMU", "WRST", "YSU"],
+      "Ivy" : ["BRWN", "COLU", "COR", "DART", "HARV", "PENN", "PRIN", "YALE"],
+      "MAAC" : ["CAN", "FAIR", "IONA", "MAN", "MRST", "MSM", "NIA", "QUIN", "RID", "SPU" ,"SIE"],
+      "Mid-American" : ["AKR", "BALL", "BGSU", "BUFF", "CMU", "EMU", "KENT", "M-OH", "NIU", "OHIO", "TOL" , "WMU"],
+      "MEAC" : ["COPP", "DSU", "HOW", "MORG", "NORF", "NCCU", "SCST"],
+      "Missouri Valley" : ["BEL", "BRAD", "DRKE", "EVAN", "ILST", "INST", "MOST", "MUR", "UNI", "SIU", "UIC", "VAL"],
+      "Mountain West" : ["AFA", "BOIS", "CSU", "FRES", "NEV", "UNM", "SDSU", "SJSU", "UNLV", "USU", "WYO"],
+      "Northeast" : ["CCSU", "FDU", "LIU", "MRMK", "SHU", "SFPA", "SFNY", "STO", "WAG"],
+      "Ohio Valley" : ["EIU", "LIN", "LR", "MORE", "SIUE", "SEMO", "USI", "TNST", "TNTC", "UTM"],
+      "Pac-12" : ["ASU", "ARIZ", "CAL", "COLO", "ORE", "ORST", "STAN", "UCLA", "USC", "UTAH", "WASH", "WSU"],
+      "Patriot League" : ["AMER", "ARMY", "BU", "BUCK", "COLG", "HC", "LAF", "LEH", "L-MD", "NAVY"],
+      "SEC" : ["ALA", "ARK", "AUB", "FLA", "UGA", "UK", "LSU", "MSST", "MIZ", "MISS", "SC", "TENN", "TA&M", "VAN"],
+      "Southern" : ["UTC", "ETSU", "FUR", "MER", "SAM", "UNCG", "WCU", "WOF"],
+      "Southland" : ["HCU", "UIW", "LAM", "MCN", "UNO", "NICH", "NWST", "SELA", "TAMC", "AMCC"],
+      "SWAC" : ["AAMU", "ALST", "ALCN", "UAPB", "BCU", "FAMU", "GRAM", "JKST", "MVSU", "PV", "SOU", "TXSO"],
+      "Summit League" : ["DEN", "KC", "UND", "NDSU", "OMA", "ORU", "SDAK", "SDST", "STMN", "WIU"],
+      "Sun Belt" : ["APP", "ARST", "CCU", "GASO", "JMU", "UL", "MRSH", "ODU", "USA", "USM", "TXST", "TROY", "ULM"],
+      "West Coast" : ["BYU", "GONZ", "LMU", "PAC", "PEPP", "PORT", "SMC", "USD", "SF", "SCU"],
+      "WAC" : ["ACU", "CBU", "GCU", "NMSU", "SHSU", "SEA", "SUU", "SFA", "TAR", "UTA", "RGV", "UTU", "UVU"],
+      "Top 25" : ["@T25"] //special indicator for Top 25 ranked teams
+
+    },
+
 
     NCAAM_MM : {}, //no groups for March Madness
 

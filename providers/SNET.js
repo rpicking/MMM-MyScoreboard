@@ -14,7 +14,7 @@
 
 
   All sports are provided in a single feed at
-  https://d290qmen6zswb.cloudfront.net/ticker
+  https://mobile-statsv2.sportsnet.ca/ticker
 
   The feed takes one parameter:
 
@@ -43,7 +43,7 @@
 
 */
 
-const request = require("request");
+const axios = require("axios");
 const moment = require("moment-timezone");
 const parseJSON = require("json-parse-async");
 
@@ -109,25 +109,18 @@ module.exports = {
     // console.log("Get SNET JSON");
     var self = this;
 
-    var url = "https://d290qmen6zswb.cloudfront.net/ticker?day=" + this.gameDate.format("YYYY-MM-DD");
+    var url = "https://mobile-statsv2.sportsnet.ca/ticker?day=" + this.gameDate.format("YYYY-MM-DD");
 
-    request({url: url, method: "GET"}, function(r_err, response, body) {
 
-      if(!r_err && response.statusCode == 200) {
-        
-        parseJSON(body, function(p_err, content) {
-          if (p_err) {
-            console.log( "[MMM-MyScoreboard] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** Couldn't parse data for provider SNET: " + p_err );       
-          } else if (content.data) {
-            self.scoresObj = content;
-          }
-        });
-
-      } else {
-        console.log( "[MMM-MyScoreboard] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** Couldn't retrieve data for provider SNET: " + r_err );       
-      }
-
-    });
+    axios.get(url)
+      .then( function(response) {
+        if(response.data.data) {
+          self.scoresObj = response.data;
+        }
+      })
+      .catch( function(r_err) {
+         console.log( "[MMM-MyScoreboard] " + moment().format("D-MMM-YY HH:mm") + " ** ERROR ** Couldn't retrieve data for provider SNET: " + r_err );       
+      })
   },
 
 
@@ -315,6 +308,8 @@ module.exports = {
         vTeam: game.visiting_team.short_name.toUpperCase(),
         hTeamLong: game.home_team.short_name == "TBD" ? "TBD" : self.titleCase(game.home_team.name),
         vTeamLong: game.visiting_team.short_name == "TBD" ? "TBD" : self.titleCase(game.visiting_team.name),
+        hTeamLogoUrl: game.home_team.img_url_90,
+        vTeamLogoUrl: game.visiting_team.img_url_90,
         hScore: game.home_team.score,
         vScore: game.visiting_team.score,
         status: status
